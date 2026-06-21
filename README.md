@@ -29,7 +29,7 @@ The architecture and execution model are documented in:
 
 - `docs/` - canonical architecture and platform documentation
 - `sim/` - simulator source tree, build system, tools, tests, and generated files
-- `plan.md` and `plans.md` - project planning notes
+- `docs/hvm-simulator-roadmap.md` - combined implementation roadmap and phase plan
 
 Inside `sim/`:
 
@@ -65,6 +65,39 @@ Optional features:
 - `jit` - LLVM JIT backend
 - `ui` - SDL3 and ImGui UI support
 - `crypto` - OpenSSL crypto support
+
+## Build Targets
+
+The simulator is split into small targets so each subsystem can evolve
+independently.
+
+### Core Libraries
+
+| Target | Purpose |
+| :--- | :--- |
+| `hvm_sim_core` | Core CPU simulation support. This is where execution, decoding, register handling, and common runtime utilities converge. |
+| `hvm_sim_mem` | Memory subsystem scaffolding for RAM, ROM, MMIO, address translation, and low-level access patterns. |
+| `hvm_sim_dev` | Device-layer plumbing for timers, interrupt controllers, UARTs, and other platform devices. |
+| `hvm_sim_board` | Board-profile composition and machine wiring for the supported HVM platform variants. |
+| `hvm_sim_block` | Block-device and image-format support. The target already links Zlib for compression-related work. |
+| `hvm_sim_fw` | Firmware and boot-chain support, including boot ROM and firmware-loading paths. |
+| `hvm_sim_monitor` | Monitor and debug control surface. This target links `nlohmann_json` for structured control/response handling. |
+| `hvm_sim_host` | Host-side integration layer for display, input, and other platform-facing services. |
+| `hvm_sim_jit` | Optional LLVM-backed JIT integration for future block compilation and runtime acceleration. |
+
+### CLI Tools
+
+| Target | Purpose |
+| :--- | :--- |
+| `hvmsys` | System simulator front end. It accepts a machine profile, memory size, drives, firmware/kernel inputs, display selection, JIT/debug toggles, and monitor settings, then prints the assembled configuration. |
+| `hvmimg` | Disk image manager. It exposes `create`, `info`, `check`, `convert`, `snapshot`, and `overlay` commands and currently reports the requested action. |
+| `hvmdisk` | Disk image formatter. It accepts a size, filesystem type, and output path, then reports the intended disk creation task. |
+
+### Test Targets
+
+| Target | Purpose |
+| :--- | :--- |
+| `hvm-sim-tests` | GoogleTest-based unit test binary for simulator behavior. The current tree includes a sanity test plus CPU-focused tests that exercise decode, memory access, and instruction execution paths. |
 
 ## Configure, Build, Test
 
@@ -104,18 +137,6 @@ cd sim
 cmake --preset macos-clang-jit
 cmake --build --preset macos-clang-jit
 ```
-
-## Available Tools
-
-The build produces three command-line tools:
-
-- `hvmsys` - system simulator front end
-- `hvmimg` - image utility
-- `hvmdisk` - disk utility
-
-The test target is:
-
-- `hvm-sim-tests`
 
 ## Generated Files
 

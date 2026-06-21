@@ -1,0 +1,179 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux
+            runs-on: ubuntu-latest
+            generator: Ninja
+            build_dir: ci-linux
+            triplet: x64-linux
+            compiler_c: clang
+            compiler_cxx: clang++
+            config: Debug
+            manifest_features: ""
+          - name: macos
+            runs-on: macos-latest
+            generator: Ninja
+            build_dir: ci-macos
+            triplet: arm64-osx
+            compiler_c: clang
+            compiler_cxx: clang++
+            config: Debug
+            manifest_features: ""
+          - name: windows
+            runs-on: windows-latest
+            generator: Visual Studio 17 2022
+            build_dir: ci-windows
+            triplet: x64-windows
+            config: Debug
+            manifest_features: ""
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install vcpkg
+        shell: pwsh
+        run: |
+          $env:VCPKG_ROOT = Join-Path $env:RUNNER_TEMP "vcpkg"
+          if (-not (Test-Path $env:VCPKG_ROOT)) {
+            git clone --depth 1 https://github.com/microsoft/vcpkg.git $env:VCPKG_ROOT
+          }
+
+          if ($IsWindows) {
+            & (Join-Path $env:VCPKG_ROOT "bootstrap-vcpkg.bat")
+          } else {
+            & (Join-Path $env:VCPKG_ROOT "bootstrap-vcpkg.sh")
+          }
+
+      - name: Configure
+        shell: pwsh
+        run: |
+          $env:VCPKG_ROOT = Join-Path $env:RUNNER_TEMP "vcpkg"
+          $toolchain = Join-Path $env:VCPKG_ROOT "scripts/buildsystems/vcpkg.cmake"
+          $buildDir = Join-Path $env:GITHUB_WORKSPACE "sim/build/${{ matrix.build_dir }}"
+          New-Item -ItemType Directory -Force -Path $buildDir | Out-Null
+
+          $cmakeArgs = @(
+            "-S", "sim",
+            "-B", $buildDir,
+            "-DCMAKE_TOOLCHAIN_FILE=$toolchain",
+            "-DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}",
+            "-DBUILD_TOOLS=ON",
+            "-DBUILD_TESTS=ON",
+            "-DGENERATE_OPCODES=ON"
+          )
+
+          if ("${{ matrix.manifest_features }}" -ne "") {
+            $cmakeArgs += "-DVCPKG_MANIFEST_FEATURES=${{ matrix.manifest_features }}"
+          }
+
+          if ("${{ matrix.generator }}" -eq "Ninja") {
+            $cmakeArgs += @(
+              "-G", "Ninja",
+              "-DCMAKE_BUILD_TYPE=${{ matrix.config }}",
+              "-DCMAKE_C_COMPILER=${{ matrix.compiler_c }}",
+              "-DCMAKE_CXX_COMPILER=${{ matrix.compiler_cxx }}"
+            )
+          } else {
+            $cmakeArgs += @(
+              "-G", "Visual Studio 17 2022",
+              "-A", "x64"
+            )
+          }
+
+          & cmake @cmakeArgs
+
+      - name: Build
+        shell: pwsh
+        run: |
+          $buildDir = Join-Path $env:GITHUB_WORKSPACE "sim/build/${{ matrix.build_dir }}"
+          if ("${{ matrix.generator }}" -eq "Ninja") {
+            & cmake --build $buildDir --target all --parallel
+          } else {
+            & cmake --build $buildDir --config ${{ matrix.config }}
+          }
+
+      - name: Test
+        shell: pwsh
+        run: |
+          $buildDir = Join-Path $env:GITHUB_WORKSPACE "sim/build/${{ matrix.build_dir }}"
+          if ("${{ matrix.generator }}" -eq "Ninja") {
+            & ctest --test-dir $buildDir --output-on-failure
+          } else {
+            & ctest --test-dir $buildDir --build-config ${{ matrix.config }} --output-on-failure
+          }
+
+  jit-linux:
+    name: linux-jit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install vcpkg
+        shell: pwsh
+        run: |
+          $env:VCPKG_ROOT = Join-Path $env:RUNNER_TEMP "vcpkg"
+          if (-not (Test-Path $env:VCPKG_ROOT)) {
+            git clone --depth 1 https://github.com/microsoft/vcpkg.git $env:VCPKG_ROOT
+          }
+          & (Join-Path $env:VCPKG_ROOT "bootstrap-vcpkg.sh")
+
+      - name: Configure
+        shell: pwsh
+        run: |
+          $env:VCPKG_ROOT = Join-Path $env:RUNNER_TEMP "vcpkg"
+          $toolchain = Join-Path $env:VCPKG_ROOT "scripts/buildsystems/vcpkg.cmake"
+          $buildDir = Join-Path $env:GITHUB_WORKSPACE "sim/build/ci-linux-jit"
+          New-Item -ItemType Directory -Force -Path $buildDir | Out-Null
+
+          $env:VCPKG_MANIFEST_FEATURES = "jit"
+          & cmake -S sim -B $buildDir `
+            -G Ninja `
+            -DCMAKE_BUILD_TYPE=Debug `
+            -DCMAKE_C_COMPILER=clang `
+            -DCMAKE_CXX_COMPILER=clang++ `
+            -DCMAKE_TOOLCHAIN_FILE=$toolchain `
+            -DVCPKG_TARGET_TRIPLET=x64-linux `
+            -DVCPKG_MANIFEST_FEATURES=jit `
+            -DBUILD_TOOLS=ON `
+            -DBUILD_TESTS=ON `
+            -DHVM_SIM_ENABLE_JIT=ON `
+            -DGENERATE_OPCODES=ON
+
+      - name: Build
+        shell: pwsh
+        run: |
+          $buildDir = Join-Path $env:GITHUB_WORKSPACE "sim/build/ci-linux-jit"
+          & cmake --build $buildDir --target all --parallel
+
+      - name: Test
+        shell: pwsh
+        run: |
+          $buildDir = Join-Path $env:GITHUB_WORKSPACE "sim/build/ci-linux-jit"
+          & ctest --test-dir $buildDir --output-on-failure

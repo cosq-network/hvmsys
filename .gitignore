@@ -43,3 +43,4 @@ sim/vcpkg_installed/
 *.trace
 core
 core.*
+.aider*
