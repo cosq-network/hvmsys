@@ -1,0 +1,114 @@
+Mnemonic,Opcode,Encoding,Format,Operands,Operation,Description,Func,Example
+NOP,0x00,base32,R,"-, -, -, -",-,Performs no operation. Used for padding and timing.,-,nop
+MOV,0x01,base32,R,"rd, rs, -, -",rd = rs,Copies the contents of source register rs to destination register rd.,-,"mov r1, r2"
+MOVZ,0x03,base32,I,"rd, rs, imm15",rd = rs | zero_extend(imm15),Zero-extends a 15-bit immediate value and performs bitwise OR with rs; storing the result in rd.,-,"movz r1, r0, 42"
+LUI,0x04,base32,I,"rd, rs, imm15",rd = rs | (imm15 << 49),Loads a 15-bit immediate value into bits 49-63 of rd; effectively loading the upper portion of a 64-bit register when used with rs.,-,"lui r1, r0, 0x1234"
+ADDI,0x05,base32,I,"rd, rs, imm15",rd = rs + sign_extend(imm15),Adds a sign-extended 15-bit immediate value to the contents of rs and stores the result in rd.,-,"addi r1, r2, 10"
+RETAIN,0x06,base32,R,"rd, rs1, -, -",rd = rs1; if rs1 != 0 then atomic_inc(mem[rs1 - 16]:64),Increments the managed-object reference count header without trapping and returns the original object pointer.,-,"retain r1, r2"
+RELEASE,0x07,base32,R,"rd, rs1, -, -",rd = release_zero_flag(rs1),Decrements the managed-object reference count header without trapping; rd is 1 when the object reaches zero and must be released by runtime slow path.,-,"release r1, r2"
+ICACHE.RNG,0x0B,base32,R,"-, base, size, -",invalidate_icache_range(base size),Invalidates instruction/JIT cache state for the byte range [base base+size).,-,"icache.rng r1, r2"
+ADD,0x10,base32,R,"rd, rs1, rs2, -",rd = rs1 + rs2,Adds the contents of rs1 and rs2 and stores the 64-bit result in rd.,0,"add r1, r2, r3"
+SUB,0x10,base32,R,"rd, rs1, rs2, -",rd = rs1 - rs2,Subtracts the contents of rs2 from rs1 and stores the 64-bit result in rd.,1,"sub r1, r2, r3"
+MUL,0x10,base32,R,"rd, rs1, rs2, -",rd = (rs1 * rs2)[63:0],Multiplies the contents of rs1 and rs2 and stores the lower 64 bits of the result in rd.,2,"mul r1, r2, r3"
+DIV,0x10,base32,R,"rd, rs1, rs2, -",rd = rs1 / rs2 (signed),Performs signed integer division of rs1 by rs2 and stores the quotient in rd.,5,"div r1, r2, r3"
+DIVU,0x10,base32,R,"rd, rs1, rs2, -",rd = rs1 / rs2 (unsigned),Performs unsigned integer division of rs1 by rs2 and stores the quotient in rd.,6,"divu r1, r2, r3"
+REM,0x10,base32,R,"rd, rs1, rs2, -",rd = rs1 % rs2 (signed),Performs signed integer division of rs1 by rs2 and stores the remainder in rd.,7,"rem r1, r2, r3"
+SHL,0x13,base32,R,"rd, rs1, rs2, -",rd = rs1 << (rs2 & 63),Shifts the contents of rs1 left by the number of bits specified in rs2 (mod 64) and stores the result in rd.,0,"shl r1, r2, r3"
+SHR,0x13,base32,R,"rd, rs1, rs2, -",rd = rs1 >> (rs2 & 63) (logical),Performs logical right shift of rs1 by the number of bits specified in rs2 (mod 64) and stores the result in rd.,1,"shr r1, r2, r3"
+SAR,0x13,base32,R,"rd, rs1, rs2, -",rd = rs1 >> (rs2 & 63) (arithmetic),Performs arithmetic right shift of rs1 by the number of bits specified in rs2 (mod 64) and stores the result in rd.,2,"sar r1, r2, r3"
+AND,0x20,base32,R,"rd, rs1, rs2, -",rd = rs1 & rs2,Performs bitwise AND of rs1 and rs2 and stores the result in rd.,0,"and r1, r2, r3"
+OR,0x20,base32,R,"rd, rs1, rs2, -",rd = rs1 | rs2,Performs bitwise OR of rs1 and rs2 and stores the result in rd.,1,"or r1, r2, r3"
+XOR,0x20,base32,R,"rd, rs1, rs2, -",rd = rs1 ^ rs2,Performs bitwise XOR of rs1 and rs2 and stores the result in rd.,2,"xor r1, r2, r3"
+NOT,0x21,base32,R,"rd, rs, -, -",rd = ~rs,Performs bitwise NOT (one's complement) of rs and stores the result in rd.,-,"not r1, r2"
+CMPEQ,0x40,base32,R,"rd, rs1, rs2, -",rd = (rs1 == rs2) ? 1 : 0,Compares rs1 and rs2 for equality. Stores 1 in rd if equal; 0 otherwise.,0,"cmpeq r1, r2, r3"
+CMPNE,0x40,base32,R,"rd, rs1, rs2, -",rd = (rs1 != rs2) ? 1 : 0,Compares rs1 and rs2 for inequality. Stores 1 in rd if not equal; 0 otherwise.,1,"cmpne r1, r2, r3"
+CMPLT,0x40,base32,R,"rd, rs1, rs2, -",rd = (rs1 < rs2) ? 1 : 0 (signed),Compares rs1 and rs2 (signed). Stores 1 in rd if rs1 < rs2; 0 otherwise.,2,"cmplt r1, r2, r3"
+CMPLE,0x40,base32,R,"rd, rs1, rs2, -",rd = (rs1 <= rs2) ? 1 : 0 (signed),Compares rs1 and rs2 (signed). Stores 1 in rd if rs1 <= rs2; 0 otherwise.,3,"cmple r1, r2, r3"
+FCMPEQ,0x41,base32,R,"rd, rs1, rs2, -",rd = (rs1 == rs2) ? 1 : 0 (f64),Compares floating-point values in rs1 and rs2 for equality. Stores 1 in rd if equal; 0 otherwise.,0,"fcmpeq r1, r2, r3"
+FCMPLT,0x41,base32,R,"rd, rs1, rs2, -",rd = (rs1 < rs2) ? 1 : 0 (f64),Compares floating-point values in rs1 and rs2. Stores 1 in rd if rs1 < rs2; 0 otherwise.,1,"fcmplt r1, r2, r3"
+FCMPLE,0x41,base32,R,"rd, rs1, rs2, -",rd = (rs1 <= rs2) ? 1 : 0 (f64),Compares floating-point values in rs1 and rs2. Stores 1 in rd if rs1 <= rs2; 0 otherwise.,2,"fcmple r1, r2, r3"
+FADD,0x30,base32,R,"rd, rs1, rs2, -",rd = rs1 + rs2 (f64),Adds floating-point values in rs1 and rs2 and stores the result in rd.,0,"fadd r1, r2, r3"
+FSUB,0x30,base32,R,"rd, rs1, rs2, -",rd = rs1 - rs2 (f64),Subtracts floating-point value in rs2 from rs1 and stores the result in rd.,1,"fsub r1, r2, r3"
+FMUL,0x30,base32,R,"rd, rs1, rs2, -",rd = rs1 * rs2 (f64),Multiplies floating-point values in rs1 and rs2 and stores the result in rd.,2,"fmul r1, r2, r3"
+FDIV,0x30,base32,R,"rd, rs1, rs2, -",rd = rs1 / rs2 (f64),Divides floating-point value in rs1 by rs2 and stores the result in rd.,3,"fdiv r1, r2, r3"
+BEQ,0x50,base32,B,"rs1, rs2, imm15",if rs1 == rs2 then pc += sign_extend(imm15) * 4,Branches to PC + sign_extend(imm15) * 4 if rs1 equals rs2.,-,"beq r1, r2, 10"
+BNE,0x51,base32,B,"rs1, rs2, imm15",if rs1 != rs2 then pc += sign_extend(imm15) * 4,Branches to PC + sign_extend(imm15) * 4 if rs1 does not equal rs2.,-,"bne r1, r2, 10"
+BLT,0x52,base32,B,"rs1, rs2, imm15",if rs1 < rs2 (signed) then pc += sign_extend(imm15) * 4,Branches to PC + sign_extend(imm15) * 4 if rs1 is less than rs2 (signed).,-,"blt r1, r2, 10"
+BLE,0x53,base32,B,"rs1, rs2, imm15",if rs1 <= rs2 (signed) then pc += sign_extend(imm15) * 4,Branches to PC + sign_extend(imm15) * 4 if rs1 is less than or equal to rs2 (signed).,-,"ble r1, r2, 10"
+JMP,0x60,base32,J,offset,pc += sign_extend(offset) * 4,Performs an unconditional jump to PC + sign_extend(offset) * 4.,-,jmp 100
+JAL,0x61,base32,J,"rd, offset",rd = pc+4; pc += sign_extend(offset) * 4,Jumps to PC + sign_extend(offset) * 4 and stores the return address (PC+4) in rd (typically r29).,-,"jal r29, 100"
+JALR,0x62,base32,I,"rd, rs, imm15",rd = pc+4; pc = rs + sign_extend(imm15),Jumps to rs + sign_extend(imm15) and stores the return address (PC+4) in rd (typically r29).,-,"jalr r29, r1, 0"
+RET,0x63,base32,R,"-, -, -, -",pc = r29,Returns from a subroutine by jumping to the address stored in the link register (r29).,-,ret
+LD.B,0x70,base32,I,"rd, addr, imm15",rd = sign_extend(mem[addr + imm15]:8),Loads a signed byte from memory at [addr + imm15] and sign-extends it to 64 bits in rd.,-,"ld.b r1, r2, 0"
+LD.BU,0x71,base32,I,"rd, addr, imm15",rd = zero_extend(mem[addr + imm15]:8),Loads an unsigned byte from memory at [addr + imm15] and zero-extends it to 64 bits in rd.,-,"ld.bu r1, r2, 0"
+LD.H,0x72,base32,I,"rd, addr, imm15",rd = sign_extend(mem[addr + imm15]:16),Loads a signed half-word (16 bits) from memory at [addr + imm15] and sign-extends it to 64 bits in rd.,-,"ld.h r1, r2, 0"
+LD.HU,0x73,base32,I,"rd, addr, imm15",rd = zero_extend(mem[addr + imm15]:16),Loads an unsigned half-word (16 bits) from memory at [addr + imm15] and zero-extends it to 64 bits in rd.,-,"ld.hu r1, r2, 0"
+LD.W,0x74,base32,I,"rd, addr, imm15",rd = sign_extend(mem[addr + imm15]:32),Loads a signed word (32 bits) from memory at [addr + imm15] and sign-extends it to 64 bits in rd.,-,"ld.w r1, r2, 0"
+LD.WU,0x75,base32,I,"rd, addr, imm15",rd = zero_extend(mem[addr + imm15]:32),Loads an unsigned word (32 bits) from memory at [addr + imm15] and zero-extends it to 64 bits in rd.,-,"ld.wu r1, r2, 0"
+LD.D,0x76,base32,I,"rd, addr, imm15",rd = mem[addr + imm15]:64,Loads a double-word (64 bits) from memory at [addr + imm15] into rd.,-,"ld.d r1, r2, 0"
+LD.P,0x77,base32,R,"rd1, rd2, addr, -",rd1 = mem[addr]:64; rd2 = mem[addr + 8]:64,Loads two adjacent 64-bit words from memory. Precise exception order matches two LD.D operations.,-,"ld.p r1, r2, r3"
+ST.B,0x78,base32,I,"data, addr, imm15",mem[addr + imm15]:8 = data,Stores the lower 8 bits of register data to memory at [addr + imm15].,-,"st.b r1, r2, 0"
+ST.H,0x79,base32,I,"data, addr, imm15",mem[addr + imm15]:16 = data,Stores the lower 16 bits of register data to memory at [addr + imm15].,-,"st.h r1, r2, 0"
+ST.W,0x7A,base32,I,"data, addr, imm15",mem[addr + imm15]:32 = data,Stores the lower 32 bits of register data to memory at [addr + imm15].,-,"st.w r1, r2, 0"
+ST.D,0x7B,base32,I,"data, addr, imm15",mem[addr + imm15]:64 = data,Stores the 64-bit register data to memory at [addr + imm15].,-,"st.d r1, r2, 0"
+ST.P,0x7C,base32,R,"src1, src2, addr, -",mem[addr]:64 = src1; mem[addr + 8]:64 = src2,Stores two adjacent 64-bit words to memory. Precise exception order matches two ST.D operations.,-,"st.p r1, r2, r3"
+LDA,0x7D,base32,I,"rd, addr, imm15",rd = addr + sign_extend(imm15),Calculates the address [addr + sign_extend(imm15)] and stores it in rd. Used for pointer arithmetic.,-,"lda r1, r2, 8"
+PUSH,0x7E,base32,R,"rs, -, -, -",sp -= 8; mem[sp] = rs,Decrements the stack pointer (r31) by 8 and stores register rs at the top of the stack.,-,push r1
+POP,0x7F,base32,R,"rd, -, -, -",rd = mem[sp]; sp += 8,Loads the value from the top of the stack into rd and increments the stack pointer (r31) by 8.,-,pop r1
+ENTER,0x80,escape32,I,"-, -, imm15",sp -= 16; mem[sp] = r29; mem[sp+8] = r30; r30 = sp; sp -= sign_extend(imm15),Establishes a new stack frame: saves r29 and r30; sets r30 to current sp; and decrements sp by imm15.,-,enter 32
+LEAVE,0x81,escape32,R,"-, -, -, -",sp = r30; r29 = mem[sp]; r30 = mem[sp+8]; sp += 16,Tears down the stack frame: restores r29 and r30; and increments sp to the old value.,-,leave
+ADJSP,0x82,escape32,I,"-, -, imm15",sp += sign_extend(imm15),Adjusts the stack pointer (r31) by a sign-extended 15-bit immediate value.,-,adjsp -16
+FRAME,0x83,escape32,I,"rd, -, imm15",rd = r30 + sign_extend(imm15),Calculates the address [r30 + sign_extend(imm15)] and stores it in rd. Used for local variable access.,-,"frame r1, -8"
+CALL,0xB4,escape32,J,"rd, offset",rd = pc+4; pc += sign_extend(offset) * 4,Jumps to PC + sign_extend(offset) * 4 and saves return address in rd (r29). Used for direct calls.,-,"call r29, 200"
+TAILCALL,0xB6,escape32,J,offset,tail_call offset,Performs an unconditional tail-call jump to PC + sign_extend(offset) * 4 without saving return address.,-,tailcall 200
+SYSCALL,0xC0,escape32,I,"rd, -, imm15",rd = os_syscall(imm15),Triggers a system call to the operating system using the ID in imm15. Arguments passed in r2 (and r3 for two-arg syscalls). Result stored in rd.,-,"syscall r1, r0, 10"
+BREAK,0xC1,escape32,R,"-, -, -, -",trap_to_debugger,Triggers a software breakpoint trap to the host environment or debugger.,-,break
+ECALL,0xC2,escape32,R,"-, -, -, -",trap_to_supervisor,Traps to supervisor mode. Sets sepc=PC scause=8 and jumps to stvec.BASE.,-,ecall
+TRAPRET,0xC3,escape32,R,"-, -, -, -",return_from_trap,Returns from supervisor trap. Restores privilege from sstatus.SPP and jumps to sepc.,-,trapret
+LR.D,0xC4,escape32,R,"rd, rs1, -, -",rd = *rs1 (load-reserve),Loads a doubleword from memory at rs1 and creates a reservation for a subsequent SC.D.,-,"lr.d r1, r2"
+SC.D,0xC5,escape32,R,"rd, rs1, rs2, -",*rs1 = rs2 if reservation valid,Writes rs2 to memory at rs1 if reservation is still valid. rd=0 on success; nonzero on failure.,-,"sc.d r1, r2, r3"
+CSRRW,0xC6,escape32,I,"rd, rs, imm15",rd = CSR[imm15]; CSR[imm15] = rs,Atomically reads CSR at address imm15 into rd and writes rs to it. If rs=r0 the write is suppressed.,-,"csrrw r1, r2, 0x005"
+SFENCE.VMA,0xC8,escape32,R,"-, -, -, -",fence_vma,Synchronizes page-table updates with address translation (TLB flush). All prior stores to page tables are visible to subsequent translations.,-,sfence.vma
+LOOP.SET,0xD0,escape32,I,"-, count, imm15",loop_count = count; loop_backedge = sign_extend(imm15),Configures an optional hardware loop counter and backward branch displacement.,-,loop.set r1 -4
+LOOP.DECBR,0xD1,escape32,B,"-, -, imm15",loop_count--; if loop_count != 0 then pc += sign_extend(imm15) * 4,Decrements the active hardware loop counter and branches while nonzero. Interpreter/JIT may lower to a counted branch.,-,loop.decbr -4
+PREFETCH.R,0xD2,escape32,I,"-, base, imm15",prefetch_read(base + sign_extend(imm15)),Advisory read prefetch. Must not raise visible faults and may be implemented as a no-op.,-,prefetch.r r1 64
+PREFETCH.W,0xD3,escape32,I,"-, base, imm15",prefetch_write(base + sign_extend(imm15)),Advisory write-intent prefetch. Must not raise visible faults and may be implemented as a no-op.,-,prefetch.w r1 64
+PREFETCH.NTA,0xD4,escape32,I,"-, base, imm15",prefetch_non_temporal(base + sign_extend(imm15)),Advisory non-temporal prefetch for streaming data. Must not raise visible faults and may be implemented as a no-op.,-,prefetch.nta r1 64
+MEMZERO.HINT,0xD5,escape32,R,"-, base, size, -",hint_zero_range(base size),Advisory hint that a byte range will be zeroed. Correct software must still perform stores or call a runtime helper.,-,memzero.hint r1 r2
+ALLOC.BUMP,0xD6,escape32,I,"rd, size, imm15",rd = tlab_alloc(size align=imm15) or 0,Optional thread-local allocation-buffer fast path. A zero result means software must call the runtime allocator.,-,alloc.bump r1 r2 8
+RDPROF,0xD7,escape32,I,"rd, selector, imm15",rd = prof_counter(selector imm15),Reads an HVM profiling/performance counter subject to privilege and platform policy.,-,rdprof r1 r2 0
+CHK.B,0xD8,escape32,R,"rd, ptr, bound, -",rd = check_bounds(ptr bound),Checks tagged or bounded pointer metadata and traps on violation when HVM-Cap is enabled.,-,chk.b r1 r2 r3
+LD.D.NZ,0xD9,escape32,I,"rd, addr, imm15",if addr == 0 then trap_null else rd = mem[addr + imm15]:64,Loads a 64-bit value and folds a null-check trap into the load when HVM-NZ is enabled.,-,ld.d.nz r1 r2 0
+BR.HINT,0xDA,escape32,B,"rs1, rs2, imm15",branch_hint(rs1 rs2 imm15),Advisory branch/code-layout hint. It must not affect architectural correctness and may be a no-op.,-,br.hint r1 r2 4
+DOORBELL,0xDB,escape32,R,"-, mmio, packet, -",mmio_write_doorbell(mmio packet),Signals an accelerator or GPU command queue through a memory-mapped doorbell when HVM-A is enabled.,-,doorbell r1 r2
+VSETVL,0xE0,escape32,R,"rd, avl, vtype, -",vl = min(avl VLMAX(vtype)); rd = vl,Configures HVM-V vector length and element type.,-,vsetvl r1 r2 r3
+VLD.V,0xE1,escape32,R,"vd, base, -, -",vd = vector_load(base vl vtype),Loads active vector elements from contiguous memory.,0,vld.v v1 r2
+VST.V,0xE1,escape32,R,"vs, base, -, -",vector_store(base vs vl vtype),Stores active vector elements to contiguous memory.,1,vst.v v1 r2
+VLDS.V,0xE1,escape32,R,"vd, base, stride, -",vd = vector_strided_load(base stride vl vtype),Loads active vector elements using a byte stride.,2,vlds.v v1 r2 r3
+VSTS.V,0xE1,escape32,R,"vs, base, stride, -",vector_strided_store(base stride vs vl vtype),Stores active vector elements using a byte stride.,3,vsts.v v1 r2 r3
+VLDX.V,0xE1,escape32,R,"vd, base, index, -",vd = vector_indexed_load(base index vl vtype),Loads active vector elements using vector indexes.,4,vldx.v v1 r2 v2
+VSTX.V,0xE1,escape32,R,"vs, base, index, -",vector_indexed_store(base index vs vl vtype),Stores active vector elements using vector indexes.,5,vstx.v v1 r2 v2
+VADD.VV,0xE2,escape32,R,"vd, vs1, vs2, -",vd = vs1 + vs2,Adds active vector elements.,0,vadd.vv v1 v2 v3
+VADD.VX,0xE2,escape32,R,"vd, vs1, rs2, -",vd = vs1 + scalar(rs2),Adds scalar rs2 to active vector elements.,1,vadd.vx v1 v2 r3
+VSUB.VV,0xE2,escape32,R,"vd, vs1, vs2, -",vd = vs1 - vs2,Subtracts active vector elements.,2,vsub.vv v1 v2 v3
+VSUB.VX,0xE2,escape32,R,"vd, vs1, rs2, -",vd = vs1 - scalar(rs2),Subtracts scalar rs2 from active vector elements.,3,vsub.vx v1 v2 r3
+VMUL.VV,0xE2,escape32,R,"vd, vs1, vs2, -",vd = vs1 * vs2,Multiplies active vector elements.,4,vmul.vv v1 v2 v3
+VMUL.VX,0xE2,escape32,R,"vd, vs1, rs2, -",vd = vs1 * scalar(rs2),Multiplies active vector elements by scalar rs2.,5,vmul.vx v1 v2 r3
+VDIV.VV,0xE2,escape32,R,"vd, vs1, vs2, -",vd = vs1 / vs2,Divides active vector elements.,6,vdiv.vv v1 v2 v3
+VDIV.VX,0xE2,escape32,R,"vd, vs1, rs2, -",vd = vs1 / scalar(rs2),Divides active vector elements by scalar rs2.,7,vdiv.vx v1 v2 r3
+VFMACC.VV,0xE3,escape32,R,"vd, vs1, vs2, -",vd = vd + vs1 * vs2,Floating-point fused multiply-accumulate on active vector elements.,0,vfmacc.vv v1 v2 v3
+VFMACC.VF,0xE3,escape32,R,"vd, rs1, vs2, -",vd = vd + scalar(rs1) * vs2,Floating-point scalar-vector fused multiply-accumulate on active vector elements.,1,vfmacc.vf v1 r2 v3
+VCOMP.VV,0xE4,escape32,R,"vd, vs1, vs2, cond",vd = compare(vs1 vs2 cond),Compares active vector elements and writes a mask vector.,0,vcomp.vv v1 v2 v3 eq
+VCOMP.VX,0xE4,escape32,R,"vd, vs1, rs2, cond",vd = compare(vs1 scalar(rs2) cond),Compares active vector elements against scalar rs2 and writes a mask vector.,1,vcomp.vx v1 v2 r3 eq
+VMERGE.VVM,0xE4,escape32,R,"vd, vs1, vs2, mask",vd = merge(vs1 vs2 mask),Merges active vector elements using a mask.,2,vmerge.vvm v1 v2 v3 v0
+VFIRST.M,0xE4,escape32,R,"rd, mask, -, -",rd = first_set(mask) or -1,Returns the first active set bit index in a vector mask or -1 if none.,3,vfirst.m r1 v0
+VREDADD.VS,0xE5,escape32,R,"vd, vs1, vs2, -",vd[0] = reduce_add(vs1 vs2[0]),Reduces active vector elements by addition into scalar element vd[0].,0,vredadd.vs v1 v2 v3
+VREDMIN.VS,0xE5,escape32,R,"vd, vs1, vs2, -",vd[0] = reduce_min(vs1 vs2[0]),Reduces active vector elements by minimum into scalar element vd[0].,1,vredmin.vs v1 v2 v3
+VREDMAX.VS,0xE5,escape32,R,"vd, vs1, vs2, -",vd[0] = reduce_max(vs1 vs2[0]),Reduces active vector elements by maximum into scalar element vd[0].,2,vredmax.vs v1 v2 v3
+VSLL.VV,0xE6,escape32,R,"vd, vs1, vs2, -",vd = vs1 << vs2,Shifts active vector elements left by vector counts.,0,vsll.vv v1 v2 v3
+VSLL.VX,0xE6,escape32,R,"vd, vs1, rs2, -",vd = vs1 << scalar(rs2),Shifts active vector elements left by scalar count.,1,vsll.vx v1 v2 r3
+VSRL.VV,0xE6,escape32,R,"vd, vs1, vs2, -",vd = vs1 >> vs2,Logically shifts active vector elements right by vector counts.,2,vsrl.vv v1 v2 v3
+VSRL.VX,0xE6,escape32,R,"vd, vs1, rs2, -",vd = vs1 >> scalar(rs2),Logically shifts active vector elements right by scalar count.,3,vsrl.vx v1 v2 r3
+VAND.VV,0xE7,escape32,R,"vd, vs1, vs2, -",vd = vs1 & vs2,Bitwise AND of active vector elements.,0,vand.vv v1 v2 v3
+VOR.VV,0xE7,escape32,R,"vd, vs1, vs2, -",vd = vs1 | vs2,Bitwise OR of active vector elements.,1,vor.vv v1 v2 v3
+VXOR.VV,0xE7,escape32,R,"vd, vs1, vs2, -",vd = vs1 ^ vs2,Bitwise XOR of active vector elements.,2,vxor.vv v1 v2 v3

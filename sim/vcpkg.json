@@ -1,0 +1,27 @@
+{
+  "name": "hvm-sim",
+  "version": "0.1.0",
+  "license": "GPL-2.0-only",
+  "dependencies": [
+    "cli11",
+    "fmt",
+    "spdlog",
+    "nlohmann-json",
+    "zlib",
+    "gtest"
+  ],
+  "features": {
+    "jit": {
+      "description": "LLVM JIT backend",
+      "dependencies": ["llvm"]
+    },
+    "ui": {
+      "description": "SDL3 UI support",
+      "dependencies": ["sdl3", "imgui"]
+    },
+    "crypto": {
+      "description": "OpenSSL crypto support",
+      "dependencies": ["openssl"]
+    }
+  }
+}

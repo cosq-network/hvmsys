@@ -1,0 +1,57 @@
+Register,Mnemonic,Width (bits),Purpose
+r0,zero,64,Hardwired to zero. Reading always returns 0; writing has no effect.
+r1,arg1/ret,64,First argument and return value register.
+r2,arg2,64,Second argument register.
+r3,arg3,64,Third argument register.
+r4,tp,64,"Thread pointer. Used for thread-local storage (TLS). Preserved across function calls."
+r5,arg4,64,Fourth argument register.
+r6,arg5,64,Fifth argument register.
+r7,arg6,64,Sixth argument register.
+r8,arg7,64,Seventh argument register.
+r9,temp1,64,Temporary register.
+r10,temp2,64,Temporary register.
+r11,temp3,64,Temporary register.
+r12,temp4,64,Temporary register.
+r13,temp5,64,Temporary register.
+r14,temp6,64,Temporary register.
+r15,temp7,64,Temporary register.
+r16,saved1,64,Callee-saved register.
+r17,saved2,64,Callee-saved register.
+r18,saved3,64,Callee-saved register.
+r19,saved4,64,Callee-saved register.
+r20,saved5,64,Callee-saved register.
+r21,saved6,64,Callee-saved register.
+r22,saved7,64,Callee-saved register.
+r23,saved8,64,Callee-saved register.
+r24,saved9,64,Callee-saved register.
+r25,saved10,64,Callee-saved register.
+r26,saved11,64,Callee-saved register.
+r27,saved12,64,Callee-saved register.
+r28,saved13,64,Callee-saved register.
+r29,lr,64,Link register holding return address for `RET`.
+r30,fp,64,"Frame pointer. Required by ENTER/LEAVE/FRAME instructions."
+r31,sp,64,Stack pointer.
+pc,pc,64,Program counter.
+v0,vmask/vret,VLEN,Vector mask register and vector return/temporary register when HVM-V is enabled.
+v1,vtmp1,VLEN,Caller-saved vector temporary register when HVM-V is enabled.
+v2,vtmp2,VLEN,Caller-saved vector temporary register when HVM-V is enabled.
+v3,vtmp3,VLEN,Caller-saved vector temporary register when HVM-V is enabled.
+v4,vtmp4,VLEN,Caller-saved vector temporary register when HVM-V is enabled.
+v5,vtmp5,VLEN,Caller-saved vector temporary register when HVM-V is enabled.
+v6,vtmp6,VLEN,Caller-saved vector temporary register when HVM-V is enabled.
+v7,vtmp7,VLEN,Caller-saved vector temporary register when HVM-V is enabled.
+v8,vsaved1,VLEN,Callee-saved vector register in ABI profiles that enable preserved vector state.
+v9,vsaved2,VLEN,Callee-saved vector register in ABI profiles that enable preserved vector state.
+v10,vsaved3,VLEN,Callee-saved vector register in ABI profiles that enable preserved vector state.
+v11,vsaved4,VLEN,Callee-saved vector register in ABI profiles that enable preserved vector state.
+v12,vsaved5,VLEN,Callee-saved vector register in ABI profiles that enable preserved vector state.
+v13,vsaved6,VLEN,Callee-saved vector register in ABI profiles that enable preserved vector state.
+v14,vsaved7,VLEN,Callee-saved vector register in ABI profiles that enable preserved vector state.
+v15,vsaved8,VLEN,Callee-saved vector register in ABI profiles that enable preserved vector state.
+vl,vl,64,Active vector length when HVM-V is enabled.
+vtype,vtype,64,Vector element width and grouping metadata when HVM-V is enabled.
+vstate,vstate,2,Vector context state field: Off Initial Clean or Dirty.
+loop_count,loop_count,64,Optional HVM-L active hardware-loop counter.
+loop_backedge,loop_backedge,64,Optional HVM-L active hardware-loop branch displacement.
+feature0,feature0,64,HVM feature bit register for base and green-compute extension discovery.
+profsel,profsel,64,Optional HVM-Prof selector state used by profiling counter reads.

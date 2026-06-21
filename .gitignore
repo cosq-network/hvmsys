@@ -1,0 +1,45 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor and IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# CMake build output
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+CTestTestfile.cmake
+cmake_install.cmake
+compile_commands.json
+Testing/
+
+# Project build directories
+sim/build/
+sim/generated/
+
+# Generated dependency installs
+vcpkg_installed/
+sim/vcpkg_installed/
+
+# Compiled objects and binaries
+*.a
+*.dylib
+*.dll
+*.exe
+*.lib
+*.o
+*.obj
+*.so
+*.out
+
+# Test and runtime logs
+*.log
+*.trace
+core
+core.*
