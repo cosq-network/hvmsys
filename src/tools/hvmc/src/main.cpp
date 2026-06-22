@@ -5,6 +5,7 @@
 #include "hvmc/lexer.h"
 #include "hvmc/parser.h"
 #include "hvmc/codegen.h"
+#include "hvmc/preprocessor.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -19,7 +20,8 @@ static void usage(const char* prog) {
     std::cerr << "  -o FILE    Output file (default: a.out)\n";
     std::cerr << "  -S         Produce assembly output\n";
     std::cerr << "  -c         Produce object file only\n";
-    std::cerr << "  -E         Preprocess only (not implemented)\n";
+    std::cerr << "  -E         Preprocess only\n";
+    std::cerr << "  -I PATH    Add include path\n";
     std::cerr << "  -v         Verbose\n";
     std::cerr << "  --help     Show this help\n";
 }
@@ -61,6 +63,7 @@ int main(int argc, char** argv) {
     bool emit_obj = false;
     bool emit_preproc = false;
     bool verbose = false;
+    std::vector<std::string> include_paths;
     std::string input;
 
     for (int i = 1; i < argc; i++) {
@@ -70,6 +73,7 @@ int main(int argc, char** argv) {
         else if (arg == "-c") emit_obj = true;
         else if (arg == "-E") emit_preproc = true;
         else if (arg == "-v") verbose = true;
+        else if (arg == "-I" && i + 1 < argc) { include_paths.push_back(argv[++i]); }
         else if (arg == "--help") { usage(argv[0]); return 0; }
         else input = arg;
     }
@@ -80,6 +84,34 @@ int main(int argc, char** argv) {
     }
 
     std::string source = read_file(input);
+
+    // Handle preprocessor only mode
+    if (emit_preproc) {
+        std::string preprocessed = preprocess(source, include_paths);
+        
+        // Determine output name
+        if (output == "a.out") {
+            output = input + ".i";
+        }
+        
+        std::ofstream f(output);
+        if (!f) {
+            std::cerr << "Error: cannot write " << output << "\n";
+            return 1;
+        }
+        f << preprocessed;
+        f.close();
+        
+        if (verbose) {
+            std::cerr << "Preprocessed: " << input << " -> " << output << "\n";
+        }
+        return 0;
+    }
+
+    // Preprocess the source if it's a C file
+    if (has_suffix(input, ".c")) {
+        source = preprocess(source, include_paths);
+    }
 
     // Determine default output name if not specified
     if (output == "a.out") {

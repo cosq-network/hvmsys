@@ -9,6 +9,7 @@ target_include_directories(hvm_sim_core PUBLIC
 )
 
 target_link_libraries(hvm_sim_core PUBLIC
+  hvm_sim_mem
   fmt::fmt
   spdlog::spdlog
 )

@@ -1,4 +1,5 @@
 #include "hvm-sim/core/executor.hpp"
+#include "hvm-sim/core/exceptions.hpp"
 #include <cstring>
 #include <cmath>
 #include <algorithm>
@@ -33,6 +34,80 @@ void tick_timer(HvmCpuState& state) {
   state.stime++;
   if (state.stime >= state.stimecmp && (state.sstatus & 1)) {
     state.signal_trap(0x8000000000000000ULL, 0);
+  }
+}
+
+// Safe memory read with exception handling
+uint8_t safe_read_byte(MemoryAccess& mem, uint64_t addr, uint64_t pc) {
+  try {
+    return mem.read_byte(addr);
+  } catch (const std::out_of_range&) {
+    throw MemoryAccessException(pc, addr, false);
+  }
+}
+
+uint16_t safe_read_half(MemoryAccess& mem, uint64_t addr, uint64_t pc) {
+  try {
+    return mem.read_half(addr);
+  } catch (const std::out_of_range&) {
+    throw MemoryAccessException(pc, addr, false);
+  }
+}
+
+uint32_t safe_read_word(MemoryAccess& mem, uint64_t addr, uint64_t pc) {
+  try {
+    return mem.read_word(addr);
+  } catch (const std::out_of_range&) {
+    throw MemoryAccessException(pc, addr, false);
+  }
+}
+
+uint64_t safe_read_dword(MemoryAccess& mem, uint64_t addr, uint64_t pc) {
+  try {
+    return mem.read_dword(addr);
+  } catch (const std::out_of_range&) {
+    throw MemoryAccessException(pc, addr, false);
+  }
+}
+
+// Safe memory write with exception handling
+void safe_write_byte(MemoryAccess& mem, uint64_t addr, uint8_t val, uint64_t pc) {
+  try {
+    mem.write_byte(addr, val);
+  } catch (const std::out_of_range&) {
+    throw MemoryAccessException(pc, addr, true);
+  } catch (const std::runtime_error&) {
+    throw MemoryAccessException(pc, addr, true);
+  }
+}
+
+void safe_write_half(MemoryAccess& mem, uint64_t addr, uint16_t val, uint64_t pc) {
+  try {
+    mem.write_half(addr, val);
+  } catch (const std::out_of_range&) {
+    throw MemoryAccessException(pc, addr, true);
+  } catch (const std::runtime_error&) {
+    throw MemoryAccessException(pc, addr, true);
+  }
+}
+
+void safe_write_word(MemoryAccess& mem, uint64_t addr, uint32_t val, uint64_t pc) {
+  try {
+    mem.write_word(addr, val);
+  } catch (const std::out_of_range&) {
+    throw MemoryAccessException(pc, addr, true);
+  } catch (const std::runtime_error&) {
+    throw MemoryAccessException(pc, addr, true);
+  }
+}
+
+void safe_write_dword(MemoryAccess& mem, uint64_t addr, uint64_t val, uint64_t pc) {
+  try {
+    mem.write_dword(addr, val);
+  } catch (const std::out_of_range&) {
+    throw MemoryAccessException(pc, addr, true);
+  } catch (const std::runtime_error&) {
+    throw MemoryAccessException(pc, addr, true);
   }
 }
 
@@ -99,8 +174,11 @@ void execute_inst(HvmCpuState& state, MemoryAccess& mem, const DecodedInst& di) 
     case HvmMnemonic::kDIV: {
       int64_t a = static_cast<int64_t>(state.read_reg(di.rs1));
       int64_t b = static_cast<int64_t>(state.read_reg(di.rs2));
-      int64_t result = (b == 0) ? -1 : (a / b);
-      state.write_reg(di.rd, static_cast<uint64_t>(result));
+      if (b == 0) {
+        state.write_reg(di.rd, static_cast<uint64_t>(-1));
+      } else {
+        state.write_reg(di.rd, static_cast<uint64_t>(a / b));
+      }
       state.pc += di.is_escape ? 8 : 4;
       break;
     }
@@ -108,8 +186,11 @@ void execute_inst(HvmCpuState& state, MemoryAccess& mem, const DecodedInst& di) 
     case HvmMnemonic::kDIVU: {
       uint64_t a = state.read_reg(di.rs1);
       uint64_t b = state.read_reg(di.rs2);
-      uint64_t result = (b == 0) ? static_cast<uint64_t>(-1) : (a / b);
-      state.write_reg(di.rd, result);
+      if (b == 0) {
+        state.write_reg(di.rd, static_cast<uint64_t>(-1));
+      } else {
+        state.write_reg(di.rd, a / b);
+      }
       state.pc += di.is_escape ? 8 : 4;
       break;
     }
@@ -117,8 +198,11 @@ void execute_inst(HvmCpuState& state, MemoryAccess& mem, const DecodedInst& di) 
     case HvmMnemonic::kREM: {
       int64_t a = static_cast<int64_t>(state.read_reg(di.rs1));
       int64_t b = static_cast<int64_t>(state.read_reg(di.rs2));
-      int64_t result = (b == 0) ? a : (a % b);
-      state.write_reg(di.rd, static_cast<uint64_t>(result));
+      if (b == 0) {
+        state.write_reg(di.rd, state.read_reg(di.rs1));
+      } else {
+        state.write_reg(di.rd, static_cast<uint64_t>(a % b));
+      }
       state.pc += di.is_escape ? 8 : 4;
       break;
     }
@@ -845,7 +929,40 @@ bool step(HvmCpuState& state, MemoryAccess& mem) {
     state.signal_trap(9, state.pc);
     return true;
   }
-  execute_inst(state, mem, di);
+  
+  try {
+    execute_inst(state, mem, di);
+  } catch (const HvmException& e) {
+    // Handle HVM-specific exceptions
+    uint64_t cause = 0;
+    switch (e.type()) {
+      case ExceptionType::kInvalidInstruction:
+        cause = 2; // Illegal instruction
+        break;
+      case ExceptionType::kMemoryAccessViolation:
+        cause = 5; // Load address misaligned / Store address misaligned
+        break;
+      case ExceptionType::kDivisionByZero:
+        cause = 8; // Division by zero
+        break;
+      case ExceptionType::kBreakpoint:
+        cause = 1; // Breakpoint
+        break;
+      case ExceptionType::kSystemCall:
+        cause = 8; // System call (using ECALL cause)
+        break;
+      default:
+        cause = 15; // Unknown
+        break;
+    }
+    state.signal_trap(cause, e.pc());
+    return true;
+  } catch (const std::exception& e) {
+    // Handle other exceptions as illegal instruction
+    state.signal_trap(2, state.pc);
+    return true;
+  }
+  
   tick_timer(state);
   return state.trap_pending;
 }

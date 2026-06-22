@@ -6,6 +6,7 @@ add_library(hvmc_lib STATIC
   src/lexer.cpp
   src/parser.cpp
   src/codegen.cpp
+  src/preprocessor.cpp
 )
 
 target_include_directories(hvmc_lib PUBLIC
