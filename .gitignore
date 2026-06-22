@@ -20,12 +20,13 @@ compile_commands.json
 Testing/
 
 # Project build directories
+build/
 sim/build/
 sim/generated/
+generated/
 
 # Generated dependency installs
 vcpkg_installed/
-sim/vcpkg_installed/
 
 # Compiled objects and binaries
 *.a

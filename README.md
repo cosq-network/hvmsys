@@ -3,7 +3,7 @@
 This repository contains the HVM system simulator, supporting tools, tests, and the
 design/specification documents that define the architecture being modeled.
 
-The codebase is organized around a CMake-based simulator under `sim/` and a
+The codebase is organized around a CMake-based simulator under `src/` and a
 documentation set under `docs/`. The simulator is currently split into modular
 subsystems for core execution, memory, devices, boards, firmware, host
 integration, monitoring, and optional JIT support.
@@ -28,19 +28,17 @@ The architecture and execution model are documented in:
 ## Repository Layout
 
 - `docs/` - canonical architecture and platform documentation
-- `sim/` - simulator source tree, build system, tools, tests, and generated files
-- `docs/hvm-simulator-roadmap.md` - combined implementation roadmap and phase plan
-
-Inside `sim/`:
-
+- `src/` - simulator source tree, build system, tools, tests, and generated files
 - `CMakeLists.txt` - top-level simulator build
 - `CMakePresets.json` - common configure/build/test presets
-- `include/` - public simulator headers
-- `src/` - subsystem implementations
-- `tools/` - command-line utilities
-- `tests/` - test targets
-- `cmake/` - local CMake helpers, including opcode-table generation
-- `generated/` - generated headers in some local workflows
+- `vcpkg.json` - vcpkg dependency manifest
+- `src/include/` - public simulator headers
+- `src/{hvm_sim_core,hvm_sim_mem,hvm_sim_dev,hvm_sim_board,hvm_sim_block,hvm_sim_fw,hvm_sim_monitor,hvm_sim_host,hvm_sim_jit}/` - subsystem implementations
+- `src/tools/` - command-line utilities
+- `src/tests/` - test targets
+- `src/cmake/` - local CMake helpers, including opcode-table generation
+- `src/generated/` - generated headers in some local workflows
+- `docs/hvm-simulator-roadmap.md` - combined implementation roadmap and phase plan
 
 ## Build Requirements
 
@@ -51,7 +49,7 @@ The simulator uses:
 - Ninja for the provided presets
 - vcpkg-managed dependencies
 
-Required packages from `sim/vcpkg.json`:
+Required packages from `vcpkg.json`:
 
 - `cli11`
 - `fmt`
@@ -101,12 +99,11 @@ independently.
 
 ## Configure, Build, Test
 
-The presets in `sim/CMakePresets.json` cover common host/toolchain combinations.
+The presets in `CMakePresets.json` cover common host/toolchain combinations.
 
 ### macOS
 
 ```bash
-cd sim
 cmake --preset macos-clang-debug
 cmake --build --preset macos-clang-debug
 ctest --preset macos-clang-debug
@@ -115,7 +112,6 @@ ctest --preset macos-clang-debug
 ### Linux
 
 ```bash
-cd sim
 cmake --preset linux-clang-debug
 cmake --build --preset linux-clang-debug
 ctest --preset linux-clang-debug
@@ -124,7 +120,6 @@ ctest --preset linux-clang-debug
 ### Windows with clang-cl
 
 ```bash
-cd sim
 cmake --preset windows-clangcl-debug
 cmake --build --preset windows-clangcl-debug
 ctest --preset windows-clangcl-debug
@@ -133,7 +128,6 @@ ctest --preset windows-clangcl-debug
 ### JIT-enabled build
 
 ```bash
-cd sim
 cmake --preset macos-clang-jit
 cmake --build --preset macos-clang-jit
 ```
@@ -146,7 +140,7 @@ The build generates derived headers under the CMake build directory, including:
 - `generated/hvm_opcode_table.hpp`
 
 Opcode-table generation is driven from `docs/hvm_instruction_set.csv` through
-`sim/cmake/generate_opcode_table.py`.
+`src/cmake/generate_opcode_table.py`.
 
 ## Notes For Contributors
 

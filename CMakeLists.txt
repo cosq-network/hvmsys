@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/sim/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src/cmake")
 
 option(HVM_SIM_ENABLE_JIT "Enable LLVM JIT backend" OFF)
 option(ENABLE_UI "Enable SDL3 UI" OFF)
@@ -57,7 +57,7 @@ endif()
 
 # Generate version header
 configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/sim/include/hvm-sim/version.hpp.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/include/hvm-sim/version.hpp.in"
   "${CMAKE_BINARY_DIR}/generated/hvm-sim/version.hpp"
   @ONLY
 )

@@ -1159,30 +1159,31 @@ The JIT must respect W^X:
 ### 14.1 Repository Layout
 
 ```text
-sim/
-  CMakeLists.txt
-  vcpkg.json
-  CMakePresets.json
+CMakeLists.txt
+vcpkg.json
+CMakePresets.json
+src/
   include/hvm-sim/
-  src/
-    core/
-    jit/
-    mem/
-    dev/
-    board/
-    block/
-    fw/
-    host/
-    monitor/
-    trace/
+  hvm_sim_core/
+  hvm_sim_mem/
+  hvm_sim_dev/
+  hvm_sim_board/
+  hvm_sim_block/
+  hvm_sim_fw/
+  hvm_sim_host/
+  hvm_sim_monitor/
+  hvm_sim_jit/
   tools/
-    hvm-sim/
-    hvm-img/
-    hvm-trace/
+    hvmsys/
+    hvmimg/
+    hvmdisk/
   tests/
-    unit/
-    integration/
-    images/
+    hvm-sim-tests/
+      unit/
+      integration/
+      images/
+  cmake/
+  generated/
 ```
 
 ### 14.2 CMake Targets
@@ -1395,21 +1396,24 @@ Goal: create the simulator project skeleton and prevent early architectural drif
 Tasks:
 
 1. Create the simulator source tree:
-   - `sim/include/hvm-sim/`
-   - `sim/src/core/`
-   - `sim/src/mem/`
-   - `sim/src/dev/`
-   - `sim/src/board/`
-   - `sim/src/block/`
-   - `sim/src/rtl/`
-   - `sim/src/jit/`
-   - `sim/src/monitor/`
-   - `sim/src/trace/`
-   - `sim/tools/hvm-sim/`
-   - `sim/tools/hvm-img/`
-   - `sim/tests/`
-2. Add top-level CMake build files with targets for `hvm_sim_core`, `hvm_sim_block`, `hvm_sim_rtl`, `hvm_sim_jit`, `hvm-sim`, and `hvm-img`.
-3. Add `vcpkg.json` with required dependencies and optional features for `jit`, `ui`, `crypto`, and `rtl`.
+   - `src/include/hvm-sim/`
+   - `src/hvm_sim_core/`
+   - `src/hvm_sim_mem/`
+   - `src/hvm_sim_dev/`
+   - `src/hvm_sim_board/`
+   - `src/hvm_sim_block/`
+   - `src/hvm_sim_fw/`
+   - `src/hvm_sim_host/`
+   - `src/hvm_sim_monitor/`
+   - `src/hvm_sim_jit/`
+   - `src/tools/hvmsys/`
+   - `src/tools/hvmimg/`
+   - `src/tools/hvmdisk/`
+   - `src/tests/`
+   - `src/cmake/`
+   - `src/generated/`
+2. Add top-level CMake build files with targets for `hvm_sim_core`, `hvm_sim_block`, `hvm_sim_mem`, `hvm_sim_dev`, `hvm_sim_board`, `hvm_sim_fw`, `hvm_sim_host`, `hvm_sim_monitor`, `hvm_sim_jit`, `hvmsys`, `hvmimg`, and `hvmdisk`.
+3. Add `vcpkg.json` with required dependencies and optional features for `jit`, `ui`, and `crypto`.
 4. Add `CMakePresets.json` for:
    - `windows-clangcl-debug`
    - `windows-clangcl-release`
@@ -1417,7 +1421,7 @@ Tasks:
    - `linux-clang-release`
    - `macos-clang-debug`
    - `macos-clang-release`
-5. Define license policy in `sim/LICENSES.md`.
+5. Define license policy in `LICENSE`.
 6. Add CI jobs for Windows, Linux, and macOS.
 7. Enable formatting, static analysis, and sanitizers:
    - `clang-format`

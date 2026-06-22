@@ -60,7 +60,7 @@ later phases.
 
 #### Build System
 
-1. `sim/CMakeLists.txt`
+1. `CMakeLists.txt`
 - C++17, position-independent code enabled
 - options for JIT, UI, tools, tests, sanitizers, crypto, and opcode generation
 - output directories for binaries and libraries
@@ -73,41 +73,41 @@ later phases.
   optional JIT, tools, and tests
 - inclusion of the opcode-table generator helper
 
-2. `sim/vcpkg.json`
+2. `vcpkg.json`
 - package name `hvm-sim`
 - version `0.1.0`
 - license metadata
 - core dependencies and optional features for JIT, UI, and crypto
 
-3. `sim/CMakePresets.json`
+3. `CMakePresets.json`
 - version 6 with minimum CMake 3.25
 - preset sets for macOS, Linux, and Windows clang/clang-cl toolchains
 - debug, release, and JIT variants where appropriate
 - matching build and test presets
 
-4. `sim/.clang-format`
+4. `.clang-format`
 - Google-style formatting
 - column limit of 100
 - indent width of 4
 - C++17 language mode
 
-5. `sim/.clang-tidy`
+5. `.clang-tidy`
 - clang diagnostics, analyzer, bugprone, modernize, performance, and readability
   checks
 - warnings treated as errors
 
 #### Code Generation
 
-6. `sim/include/hvm-sim/version.hpp.in`
+6. `src/include/hvm-sim/version.hpp.in`
 - CMake template for version metadata
 
-7. `sim/cmake/GenerateOpcodeTable.cmake`
+7. `src/cmake/GenerateOpcodeTable.cmake`
 - locates Python 3
 - reads `docs/hvm_instruction_set.csv`
 - generates `hvm_opcode_table.hpp` in the build tree
 - provides a helper function to attach generation dependencies and include paths
 
-8. `sim/cmake/generate_opcode_table.py`
+8. `src/cmake/generate_opcode_table.py`
 - parses the instruction-set CSV
 - emits the instruction metadata table
 - handles shared opcodes and function-selected sub-operations
@@ -115,56 +115,56 @@ later phases.
 
 #### Library Stubs
 
-9. `sim/src/{core,mem,dev,board,block,fw,monitor,host,jit}/CMakeLists.txt`
+9. `src/{hvm_sim_core,hvm_sim_mem,hvm_sim_dev,hvm_sim_board,hvm_sim_block,hvm_sim_fw,hvm_sim_monitor,hvm_sim_host,hvm_sim_jit}/CMakeLists.txt`
 - each subsystem builds as its own library target
 - each target includes a stub source file
 - library linking follows the intended dependency direction
 - the block layer links `zlib::zlib`
-- public include paths point at `sim/include`
+- public include paths point at `src/include`
 
-10. `sim/src/{core,mem,dev,board,block,fw,monitor,host,jit}/stub.cpp`
+10. `src/{hvm_sim_core,hvm_sim_mem,hvm_sim_dev,hvm_sim_board,hvm_sim_block,hvm_sim_fw,hvm_sim_monitor,hvm_sim_host,hvm_sim_jit}/stub.cpp`
 - minimal compilation units with a placeholder include and TODO marker
 
 #### Tools
 
-11. `sim/tools/CMakeLists.txt`
+11. `src/tools/CMakeLists.txt`
 - adds the three tool subdirectories
 
-12. `sim/tools/hvmsys/main.cpp`
+12. `src/tools/hvmsys/main.cpp`
 - system simulator CLI
 - machine selection, memory, SMP, drives, display, BIOS, kernel, initrd, DTB,
   append string, JIT, debug, monitor, and version options
 - prints a summary and exits successfully
 
-13. `sim/tools/hvmimg/main.cpp`
+13. `src/tools/hvmimg/main.cpp`
 - image utility CLI
 - create, info, check, convert, snapshot, and overlay subcommands
 - reports intended behavior and exits successfully
 
-14. `sim/tools/hvmdisk/main.cpp`
+14. `src/tools/hvmdisk/main.cpp`
 - disk utility CLI
 - size, filesystem, and output arguments
 - reports intended behavior and exits successfully
 
 #### Tests
 
-15. `sim/tests/CMakeLists.txt`
+15. `src/tests/CMakeLists.txt`
 - adds the unit-test subtree
 - registers the test executable with CTest
 
-16. `sim/tests/unit/CMakeLists.txt`
+16. `src/tests/hvm-sim-tests/CMakeLists.txt`
 - builds `hvm-sim-tests`
 - links GoogleTest and the subsystem libraries
 
-17. `sim/tests/unit/main.cpp`
+17. `src/tests/hvm-sim-tests/main.cpp`
 - standard GoogleTest entry point
 
 #### Empty Markers
 
-- `.gitkeep` in `sim/include/hvm-sim/{core,mem,dev,board,block,fw,monitor,host}/`
-- `.gitkeep` in `sim/generated/`
-- `.gitkeep` in `sim/tests/integration/`
-- `.gitkeep` in `sim/tests/images/`
+- `.gitkeep` in `src/include/hvm-sim/{core,mem,dev,board,block,fw,monitor,host}/`
+- `.gitkeep` in `src/generated/`
+- `.gitkeep` in `src/tests/integration/`
+- `.gitkeep` in `src/tests/images/`
 
 ## Phase 0 Acceptance Criteria
 
@@ -184,25 +184,25 @@ The initial verification sequence is:
 
 ```bash
 # Check file presence
-ls -la sim/CMakeLists.txt sim/vcpkg.json sim/CMakePresets.json
-ls -la sim/tools/hvmsys/main.cpp sim/tools/hvmimg/main.cpp sim/tools/hvmdisk/main.cpp
-ls -la sim/tests/unit/main.cpp
-ls -la sim/src/*/CMakeLists.txt
-ls -la sim/cmake/GenerateOpcodeTable.cmake sim/cmake/generate_opcode_table.py
-ls -la sim/include/hvm-sim/version.hpp.in
+ls -la CMakeLists.txt vcpkg.json CMakePresets.json
+ls -la src/tools/hvmsys/main.cpp src/tools/hvmimg/main.cpp src/tools/hvmdisk/main.cpp
+ls -la src/tests/hvm-sim-tests/main.cpp
+ls -la src/{hvm_sim_core,hvm_sim_mem,hvm_sim_dev,hvm_sim_board,hvm_sim_block,hvm_sim_fw,hvm_sim_monitor,hvm_sim_host,hvm_sim_jit}/CMakeLists.txt
+ls -la src/cmake/GenerateOpcodeTable.cmake src/cmake/generate_opcode_table.py
+ls -la src/include/hvm-sim/version.hpp.in
 
 # Run opcode generation
-python3 sim/cmake/generate_opcode_table.py docs/hvm_instruction_set.csv
+python3 src/cmake/generate_opcode_table.py docs/hvm_instruction_set.csv
 
 # Verify the generated header
-grep -c "HvmMnemonic" sim/build/test/generated/hvm_opcode_table.hpp
+grep -c "HvmMnemonic" build/generated/hvm_opcode_table.hpp
 
 # Configure and build
-cmake -S sim -B sim/build/test -G Ninja -DCMAKE_BUILD_TYPE=Debug
-cmake --build sim/build/test
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
 
 # Run tests
-cd sim/build/test && ctest
+ctest --test-dir build
 ```
 
 ## Later Phases

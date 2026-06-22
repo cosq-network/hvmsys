@@ -10,7 +10,7 @@ add_library(hvmc_lib STATIC
 
 target_include_directories(hvmc_lib PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../../sim/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../include
   ${CMAKE_BINARY_DIR}/generated
 )
 

@@ -3,7 +3,7 @@ add_library(hvm_sim_fw STATIC
 )
 
 target_include_directories(hvm_sim_fw PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../sim/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../include
   ${CMAKE_BINARY_DIR}/generated
 )
 
