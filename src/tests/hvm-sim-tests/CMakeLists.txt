@@ -21,7 +21,7 @@ target_link_libraries(hvm-sim-tests PRIVATE
 )
 
 target_include_directories(hvm-sim-tests PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../../include
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../tools/hvmc/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../sim/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../src/tools/hvmc/include
   ${CMAKE_BINARY_DIR}/generated
 )
