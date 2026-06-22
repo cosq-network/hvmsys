@@ -1,6 +1,7 @@
 add_executable(hvm-sim-tests
   main.cpp
   test_cpu.cpp
+  test_hvmc.cpp
 )
 
 target_link_libraries(hvm-sim-tests PRIVATE
@@ -14,11 +15,13 @@ target_link_libraries(hvm-sim-tests PRIVATE
   hvm_sim_fw
   hvm_sim_monitor
   hvm_sim_host
+  hvmc_lib
   fmt::fmt
   spdlog::spdlog
 )
 
 target_include_directories(hvm-sim-tests PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../tools/hvmc/include
   ${CMAKE_BINARY_DIR}/generated
 )

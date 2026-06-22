@@ -1,4 +1,4 @@
-add_subdirectory(unit)
+add_subdirectory(hvm-sim-tests)
 
 add_test(
   NAME hvm-sim-tests
