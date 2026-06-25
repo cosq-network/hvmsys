@@ -127,7 +127,12 @@ ASTNode* Parser::parse_function_def(CType ret_type, const char* name) {
         } while (match(TokenKind::COMMA));
     }
     expect(TokenKind::RPAREN, "expected ) after parameters");
-    expect(TokenKind::SEMICOLON, "expected ; after function declaration");
+
+    if (peek().kind == TokenKind::LBRACE) {
+        node->u.func.body = parse_block();
+    } else {
+        expect(TokenKind::SEMICOLON, "expected ; after function declaration");
+    }
 
     return node;
 }

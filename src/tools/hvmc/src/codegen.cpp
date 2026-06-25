@@ -14,7 +14,7 @@ std::string CodeGen::new_label() {
 std::string CodeGen::gen(ASTNode* node) {
     switch (node->kind) {
     case ASTKind::PROGRAM:
-        for (int i = 0; i < (int)node->u.func.params.size(); i++)
+        for (size_t i = 0; i < node->u.func.params.size(); i++)
             gen(node->u.func.params[i]);
         break;
     case ASTKind::FUNCTION_DEF:
@@ -24,7 +24,7 @@ std::string CodeGen::gen(ASTNode* node) {
         gen_variable_decl(node);
         break;
     case ASTKind::BLOCK:
-        for (int i = 0; i < (int)node->u.block.stmts.size(); i++)
+        for (size_t i = 0; i < node->u.block.stmts.size(); i++)
             gen(node->u.block.stmts[i]);
         break;
     case ASTKind::EXPR_STMT:
@@ -69,7 +69,7 @@ void CodeGen::gen_function_def(ASTNode* node) {
 
     emit_line(".section .text");
     emit_line(".global " + std::string(node->u.func.name));
-    emit_line(node->u.func.name);
+    emit_line(std::string(node->u.func.name) + ":");
     emit_line("enter $0, $0");  // placeholder
 
     gen(node->u.func.body);
@@ -132,7 +132,7 @@ void CodeGen::gen_do_while_stmt(ASTNode* node) {
 
     emit_line(start);
     gen(node->u.do_while.body);
-    gen_condition(node->u.do_while.cond, end, true);
+    gen_condition(node->u.do_while.cond, end);
     emit_line("jmp " + start);
     emit_line(end);
 }
@@ -145,12 +145,12 @@ void CodeGen::gen_condition(ASTNode* node, const std::string& label, bool invert
         gen_expression(node->u.binop.right, Reg::R2);
         std::string mnemonic;
         switch (op) {
-        case TokenKind::EQEQ: mnemonic = invert ? "bne" : "beq"; break;
-        case TokenKind::NEQ:  mnemonic = invert ? "beq" : "bne"; break;
-        case TokenKind::LT:   mnemonic = invert ? "bge" : "blt"; break;
-        case TokenKind::LE:   mnemonic = invert ? "bgt" : "ble"; break;
-        case TokenKind::GT:   mnemonic = invert ? "ble" : "bgt"; break;
-        case TokenKind::GE:   mnemonic = invert ? "blt" : "bge"; break;
+        case TokenKind::EQEQ: mnemonic = invert ? "beq" : "bne"; break;
+        case TokenKind::NEQ:  mnemonic = invert ? "bne" : "beq"; break;
+        case TokenKind::LT:   mnemonic = invert ? "blt" : "bge"; break;
+        case TokenKind::LE:   mnemonic = invert ? "ble" : "bgt"; break;
+        case TokenKind::GT:   mnemonic = invert ? "bgt" : "ble"; break;
+        case TokenKind::GE:   mnemonic = invert ? "bge" : "blt"; break;
         default: break;
         }
         if (!mnemonic.empty())
@@ -159,7 +159,10 @@ void CodeGen::gen_condition(ASTNode* node, const std::string& label, bool invert
     }
     // Fall through: compare against zero
     gen_expression(node, Reg::R1);
-    emit_line("beq r1, r0, " + label);
+    if (invert)
+        emit_line("bne r1, r0, " + label);
+    else
+        emit_line("beq r1, r0, " + label);
 }
 
 void CodeGen::gen_expression(ASTNode* node, Reg target) {
@@ -179,14 +182,14 @@ void CodeGen::gen_expression(ASTNode* node, Reg target) {
         gen_expression(node->u.binop.left, Reg::R1);
         gen_expression(node->u.binop.right, Reg::R2);
         switch (op) {
-        case TokenKind::PLUS:   emit_line("add r1, r2, r1"); break;
-        case TokenKind::MINUS:  emit_line("sub r1, r2, r1"); break;
-        case TokenKind::STAR:   emit_line("mul r1, r2, r1"); break;
-        case TokenKind::SLASH:  emit_line("div r1, r2, r1"); break;
-        case TokenKind::PERCENT: emit_line("rem r1, r2, r1"); break;
-        case TokenKind::AMPER:  emit_line("and r1, r2, r1"); break;
-        case TokenKind::PIPE:   emit_line("or r1, r2, r1"); break;
-        case TokenKind::CARET:  emit_line("xor r1, r2, r1"); break;
+        case TokenKind::PLUS:   emit_line("add r1, r1, r2"); break;
+        case TokenKind::MINUS:  emit_line("sub r1, r1, r2"); break;
+        case TokenKind::STAR:   emit_line("mul r1, r1, r2"); break;
+        case TokenKind::SLASH:  emit_line("div r1, r1, r2"); break;
+        case TokenKind::PERCENT: emit_line("rem r1, r1, r2"); break;
+        case TokenKind::AMPER:  emit_line("and r1, r1, r2"); break;
+        case TokenKind::PIPE:   emit_line("or r1, r1, r2"); break;
+        case TokenKind::CARET:  emit_line("xor r1, r1, r2"); break;
         case TokenKind::LSHIFT: emit_line("sll r1, r1, r2"); break;
         case TokenKind::RSHIFT: emit_line("srl r1, r1, r2"); break;
         default: break;
@@ -201,7 +204,7 @@ void CodeGen::gen_expression(ASTNode* node, Reg target) {
     }
     case ASTKind::ASSIGN: {
         gen_expression(node->u.assign.value, Reg::R1);
-        emit_line("mov r1, " + reg_name(target));
+        emit_line("mov " + reg_name(target) + ", r1");
         break;
     }
     case ASTKind::ADDRESS_OF: {
@@ -219,7 +222,7 @@ void CodeGen::gen_expression(ASTNode* node, Reg target) {
     }
     case ASTKind::CALL: {
         std::string name(node->u.call.name);
-        for (int i = 0; i < (int)node->u.call.args.size(); i++) {
+        for (size_t i = 0; i < node->u.call.args.size(); i++) {
             Reg r = static_cast<Reg>(static_cast<int>(Reg::R1) + i);
             gen_expression(node->u.call.args[i], r);
         }
@@ -229,9 +232,8 @@ void CodeGen::gen_expression(ASTNode* node, Reg target) {
         break;
     }
     case ASTKind::DEREF: {
-        Reg tmp = (target == Reg::R1) ? Reg::R2 : Reg::R1;
         gen_expression(node->u.deref.operand, target);
-        emit_line("ld " + reg_name(target) + ", [" + reg_name(target) + "]");
+        emit_line("LD.D " + reg_name(target) + ", [" + reg_name(target) + "]");
         break;
     }
     case ASTKind::ARRAY_INDEX: {
@@ -239,7 +241,7 @@ void CodeGen::gen_expression(ASTNode* node, Reg target) {
         gen_expression(node->u.arr_idx.index, Reg::R2);
         emit_line("sll r2, r2, 3"); // assume 8-byte elements
         emit_line("add r1, r1, r2");
-        emit_line("ld " + reg_name(target) + ", [r1]");
+        emit_line("LD.D " + reg_name(target) + ", [r1]");
         break;
     }
     default:

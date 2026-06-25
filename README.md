@@ -13,9 +13,10 @@ integration, monitoring, and optional JIT support.
 HVM stands for **Hoo Virtual Machine**. The project provides:
 
 - a 64-bit HVM CPU and system simulator
+- an HVM C compiler (`hvmc`) and assembler toolchain
 - a documented instruction set and register model
-- host-side tooling for system, image, and disk workflows
-- unit tests for the simulator core
+- host-side tooling for system, image, disk, and compiler workflows
+- unit tests for the simulator core and compiler
 - reference specifications for CPU, SoC, board, firmware, ABI, and system behavior
 
 The architecture and execution model are documented in:
@@ -34,11 +35,11 @@ The architecture and execution model are documented in:
 - `vcpkg.json` - vcpkg dependency manifest
 - `src/include/` - public simulator headers
 - `src/{hvm_sim_core,hvm_sim_mem,hvm_sim_dev,hvm_sim_board,hvm_sim_block,hvm_sim_fw,hvm_sim_monitor,hvm_sim_host,hvm_sim_jit}/` - subsystem implementations
-- `src/tools/` - command-line utilities
+- `src/tools/` - command-line utilities (hvmsys, hvmimg, hvmdisk, hvmc)
 - `src/tests/` - test targets
 - `src/cmake/` - local CMake helpers, including opcode-table generation
 - `src/generated/` - generated headers in some local workflows
-- `docs/hvm-simulator-roadmap.md` - combined implementation roadmap and phase plan
+- `docs/roadmaps/` - implementation roadmaps for the simulator and toolchain
 
 ## Build Requirements
 
@@ -90,12 +91,13 @@ independently.
 | `hvmsys` | System simulator front end. It accepts a machine profile, memory size, drives, firmware/kernel inputs, display selection, JIT/debug toggles, and monitor settings, then prints the assembled configuration. |
 | `hvmimg` | Disk image manager. It exposes `create`, `info`, `check`, `convert`, `snapshot`, and `overlay` commands and currently reports the requested action. |
 | `hvmdisk` | Disk image formatter. It accepts a size, filesystem type, and output path, then reports the intended disk creation task. |
+| `hvmc` | HVM C compiler and assembler toolchain. Compiles C source (`.c`) and assembles HVM assembly (`.s`/`.asm`) into ELF64-HVM object files or executables. Supports `-S` (assembly output), `-c` (object only), `-E` (preprocess only), and `-I` (include paths). Uses the `hvmc_lib` static library for encoder, assembler, parser, codegen, and ELF generation. |
 
 ### Test Targets
 
 | Target | Purpose |
 | :--- | :--- |
-| `hvm-sim-tests` | GoogleTest-based unit test binary for simulator behavior. The current tree includes a sanity test plus CPU-focused tests that exercise decode, memory access, and instruction execution paths. |
+| `hvm-sim-tests` | GoogleTest-based unit test binary covering CPU execution (60+ tests for all instruction categories), hvmc encoder/assembler/ELF writer, and integration tests. |
 
 ## Configure, Build, Test
 
@@ -130,6 +132,14 @@ ctest --preset windows-clangcl-debug
 ```bash
 cmake --preset macos-clang-jit
 cmake --build --preset macos-clang-jit
+```
+
+### Build specific targets
+
+```bash
+cmake --build build --target hvmc              # HVM compiler only
+cmake --build build --target hvmc_lib          # HVM compiler static library
+cmake --build build --target hvm-sim-tests     # Tests only
 ```
 
 ## Generated Files

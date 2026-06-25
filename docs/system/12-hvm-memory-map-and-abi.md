@@ -9,7 +9,7 @@ The goal is to make HVM systems bootable and portable across the documented prof
 - `HVM-S1` server board
 - `HVM-R1` robotics controller
 
-This chapter should be treated as a platform ABI draft. Exact bit encodings and final register numbers must be synchronized with `docs/hvm/hvm_register_set.csv`, `docs/hvm/hvm_instruction_set.csv`, and the simulator implementation.
+This chapter should be treated as a platform ABI draft. Exact bit encodings and final register numbers must be synchronized with `docs/hvm_register_set.csv`, `docs/hvm_instruction_set.csv`, and the simulator implementation.
 
 ---
 
@@ -605,7 +605,7 @@ The legacy `SYSCALL imm15` runtime interface in [hvm-spec.md](../hvm-spec.md) re
 Recommended executable format:
 
 - ELF64 little-endian
-- HVM machine type to be assigned
+- HVM machine type `0x9999` (`EM_HVM`)
 - RELA relocations preferred
 - DWARF debug info
 - `.eh_frame` or equivalent unwind support
@@ -855,9 +855,7 @@ The output should include:
 
 ## 19. Open ABI Decisions
 
-- Final HVM ELF machine ID.
 - Final syscall instruction encoding and syscall table ownership.
-- Final `r31` architectural role.
 - Final hard-float ABI.
 - Final vector ABI preservation rules.
 - Final HVM-39 PTE bit positions.

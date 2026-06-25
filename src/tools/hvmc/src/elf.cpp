@@ -9,6 +9,17 @@ static void w16le(std::vector<u8>& buf, u16 v) { w8(buf, v & 0xFF); w8(buf, (v >
 static void w32le(std::vector<u8>& buf, u32 v) { w16le(buf, v & 0xFFFF); w16le(buf, (v >> 16) & 0xFFFF); }
 static void w64le(std::vector<u8>& buf, u64 v) { w32le(buf, v & 0xFFFFFFFF); w32le(buf, (v >> 32) & 0xFFFFFFFF); }
 
+static void w_phdr(std::vector<u8>& buf, u32 type, u32 flags, u64 offset, u64 vaddr, u64 filesz, u64 memsz, u64 align) {
+    w32le(buf, type);
+    w32le(buf, flags);
+    w64le(buf, offset);
+    w64le(buf, vaddr);
+    w64le(buf, vaddr); // p_paddr = p_vaddr
+    w64le(buf, filesz);
+    w64le(buf, memsz);
+    w64le(buf, align);
+}
+
 static u32 add_str(std::vector<u8>& tab, const std::string& s) {
     u32 off = static_cast<u32>(tab.size());
     tab.insert(tab.end(), s.begin(), s.end());
@@ -31,6 +42,9 @@ struct ElfSec {
 };
 
 std::vector<u8> write_elf(const ObjectFile& obj) {
+    bool is_exec = obj.is_executable;
+    u64 base_addr = is_exec ? HVM_BASE_ADDR : 0;
+
     std::vector<u8> shstrtab, strtab;
     add_str(shstrtab, "");
 
@@ -51,41 +65,56 @@ std::vector<u8> write_elf(const ObjectFile& obj) {
         else if (s.name == ".rodata") rodata_data = s.data;
     }
 
+    // Compute section layout for virtual address assignment
+    u64 text_align = 4;
+    u64 rodata_align = 8;
+    u64 data_align = 8;
+    u64 bss_align = 8;
+
+    u64 text_addr = base_addr;
+    u64 text_size = text_data.size();
+    u64 rodata_offset = (text_addr + text_size + rodata_align - 1) & ~(rodata_align - 1);
+    u64 rodata_addr = rodata_offset;
+    u64 rodata_size = rodata_data.size();
+    u64 data_offset = (rodata_addr + rodata_size + data_align - 1) & ~(data_align - 1);
+    u64 data_addr = data_offset;
+    u64 data_size = data_data.size();
+    u64 bss_offset = (data_addr + data_size + bss_align - 1) & ~(bss_align - 1);
+    u64 bss_addr = bss_offset;
+
     // .text
     {
         u32 sn = add_str(shstrtab, ".text");
-        secs.push_back({sn, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, 0, 0, text_data.size(), 0, 0, 4, 0, text_data});
+        secs.push_back({sn, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, text_addr, 0, text_size, 0, 0, text_align, 0, text_data});
         sec_idx_map[".text"] = idx++;
     }
 
     // .rodata
     {
         u32 sn = add_str(shstrtab, ".rodata");
-        secs.push_back({sn, SHT_PROGBITS, SHF_ALLOC, 0, 0, rodata_data.size(), 0, 0, 8, 0, rodata_data});
+        secs.push_back({sn, SHT_PROGBITS, SHF_ALLOC, rodata_addr, 0, rodata_size, 0, 0, rodata_align, 0, rodata_data});
         sec_idx_map[".rodata"] = idx++;
     }
 
     // .data
     {
         u32 sn = add_str(shstrtab, ".data");
-        secs.push_back({sn, SHT_PROGBITS, SHF_ALLOC | SHF_WRITE, 0, 0, data_data.size(), 0, 0, 8, 0, data_data});
+        secs.push_back({sn, SHT_PROGBITS, SHF_ALLOC | SHF_WRITE, data_addr, 0, data_size, 0, 0, data_align, 0, data_data});
         sec_idx_map[".data"] = idx++;
     }
 
     // .bss
     {
         u32 sn = add_str(shstrtab, ".bss");
-        secs.push_back({sn, SHT_NOBITS, SHF_ALLOC | SHF_WRITE, 0, 0, 0, 0, 0, 8, 0, {}});
+        secs.push_back({sn, SHT_NOBITS, SHF_ALLOC | SHF_WRITE, bss_addr, 0, 0, 0, 0, bss_align, 0, {}});
         sec_idx_map[".bss"] = idx++;
     }
 
     // Build symbol table
     std::vector<Elf64_Sym> syms;
-    // Null symbol
     Elf64_Sym null_sym = {};
     syms.push_back(null_sym);
 
-    // Section symbols
     for (int i = 1; i < static_cast<int>(secs.size()); i++) {
         Elf64_Sym ss = {};
         ss.st_info = (STB_LOCAL << 4) | STT_SECTION;
@@ -93,14 +122,18 @@ std::vector<u8> write_elf(const ObjectFile& obj) {
         syms.push_back(ss);
     }
 
-    // Global symbols
     for (const auto& gs : obj.global_symbols) {
         Elf64_Sym es = {};
         es.st_name = add_str(strtab, gs.name);
         es.st_info = ((gs.is_global ? STB_GLOBAL : STB_LOCAL) << 4) |
                      (gs.is_function ? STT_FUNC : STT_OBJECT);
         es.st_shndx = gs.section_idx > 0 ? gs.section_idx : 1;
-        es.st_value = gs.value;
+        // Convert section-relative offset to virtual address for executables
+        u64 sec_addr = 0;
+        if (gs.section_idx >= 1 && gs.section_idx < static_cast<int>(secs.size())) {
+            sec_addr = secs[gs.section_idx].addr;
+        }
+        es.st_value = is_exec ? sec_addr + gs.value : gs.value;
         es.st_size = gs.size;
         syms.push_back(es);
     }
@@ -118,8 +151,7 @@ std::vector<u8> write_elf(const ObjectFile& obj) {
     {
         u32 sn = add_str(shstrtab, ".symtab");
         secs.push_back({sn, SHT_SYMTAB, 0, 0, 0, symtab_data.size(), static_cast<u32>(idx), 1, 8, sizeof(Elf64_Sym), symtab_data});
-        // link to strtab (will be at idx after we add it)
-        secs.back().link = idx + 1; // will be fixed
+        secs.back().link = idx + 1;
         sec_idx_map[".symtab"] = idx++;
     }
 
@@ -144,7 +176,6 @@ std::vector<u8> write_elf(const ObjectFile& obj) {
         sec_idx_map[".rela.text"] = idx++;
     }
 
-    // Fix symtab link to strtab
     for (auto& s : secs) {
         if (s.type == SHT_SYMTAB) {
             s.link = sec_idx_map[".strtab"];
@@ -160,8 +191,13 @@ std::vector<u8> write_elf(const ObjectFile& obj) {
 
     int shstrndx = sec_idx_map[".shstrtab"];
 
-    // Compute file layout
-    u64 offset = ELF_HEADER_SIZE;
+    // Compute program headers
+    u64 phdr_count = is_exec ? 1 : 0;
+    u64 phdr_size = phdr_count * 56;
+    u64 phdr_offset = is_exec ? ELF_HEADER_SIZE : 0;
+
+    // Compute file layout: sections start after ELF header + program headers
+    u64 offset = ELF_HEADER_SIZE + phdr_size;
     for (auto& sec : secs) {
         if (sec.type == SHT_NULL || sec.type == SHT_NOBITS) continue;
         if (sec.data.empty()) continue;
@@ -174,7 +210,6 @@ std::vector<u8> write_elf(const ObjectFile& obj) {
         offset += sec.data.size();
     }
 
-    // Align section header table
     u64 shoff = offset;
     if (shoff & 7) shoff += 8 - (shoff & 7);
 
@@ -187,34 +222,60 @@ std::vector<u8> write_elf(const ObjectFile& obj) {
     w8(out, 0);
     w8(out, 0);
     for (int i = 0; i < 7; i++) w8(out, 0);
-    w16le(out, obj.is_executable ? ET_EXEC : ET_REL);
+    w16le(out, is_exec ? ET_EXEC : ET_REL);
     w16le(out, EM_HVM);
     w32le(out, 1);
 
-    // Entry point
     u64 entry = 0;
-    for (const auto& s : syms) {
-        if (s.st_info >> 4 == STB_GLOBAL) {
-            // Check if it's _start
-            continue;
-        }
-    }
-    // Search global symbols from obj
     for (const auto& gs : obj.global_symbols) {
         if (gs.name == "_start" || gs.name == "main" || gs.name == "kernel_main") {
-            entry = gs.value;
+            u64 sec_addr = 0;
+            int si = gs.section_idx > 0 ? gs.section_idx : 1;
+            if (si >= 1 && si < static_cast<int>(secs.size())) {
+                sec_addr = secs[si].addr;
+            }
+            entry = is_exec ? sec_addr + gs.value : gs.value;
         }
     }
     w64le(out, entry);
-    w64le(out, 0); // phoff
+    w64le(out, phdr_offset);
     w64le(out, shoff);
-    w32le(out, 0); // flags
+    w32le(out, 0);
     w16le(out, ELF_HEADER_SIZE);
-    w16le(out, 0); // phentsize
-    w16le(out, 0); // phnum
+    w16le(out, is_exec ? 56 : 0);
+    w16le(out, static_cast<u16>(phdr_count));
     w16le(out, sizeof(Elf64_Shdr));
     w16le(out, static_cast<u16>(secs.size()));
     w16le(out, static_cast<u16>(shstrndx));
+
+    // Write program headers (before section data)
+    if (is_exec) {
+        // Compute the span from first alloc section to last alloc section
+        u64 first_sec_off = ~0ULL;
+        u64 last_sec_end = 0;
+        u64 min_vaddr = ~0ULL;
+        u64 max_vaddr = 0;
+        int alloc_sec_count = 0;
+        for (const auto& sec : secs) {
+            if (sec.flags & SHF_ALLOC) {
+                if (sec.offset > 0 && sec.offset < first_sec_off) first_sec_off = sec.offset;
+                if (sec.offset + sec.size > last_sec_end) last_sec_end = sec.offset + sec.size;
+                if (sec.addr < min_vaddr) min_vaddr = sec.addr;
+                if (sec.addr + sec.size > max_vaddr) max_vaddr = sec.addr + sec.size;
+                alloc_sec_count++;
+            }
+        }
+        if (alloc_sec_count == 0) {
+            // No alloc sections, fallback
+            min_vaddr = base_addr;
+            first_sec_off = ELF_HEADER_SIZE + phdr_size;
+            max_vaddr = min_vaddr;
+        }
+        u64 ph_file_size = last_sec_end - first_sec_off;
+        u64 ph_mem_size = max_vaddr - min_vaddr;
+        u64 page_size = 0x1000;
+        w_phdr(out, PT_LOAD, PF_R | PF_W | PF_X, first_sec_off, min_vaddr, ph_file_size, ph_mem_size, page_size);
+    }
 
     // Write section data
     for (auto& sec : secs) {

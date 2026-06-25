@@ -99,6 +99,15 @@ struct AsmLexer {
             return {AsmToken::NUMBER, num, val, line};
         }
 
+        if (c == '$') {
+            get();
+            std::string id;
+            while (pos < src.size() && (std::isalnum(src[pos]) || src[pos] == '_' || src[pos] == '.')) {
+                id += get();
+            }
+            return {AsmToken::IDENT, id, 0, line};
+        }
+
         if (std::isalpha(c) || c == '_' || c == '.') {
             std::string id;
             while (pos < src.size() && (std::isalnum(src[pos]) || src[pos] == '_' || src[pos] == '.')) {
@@ -209,8 +218,12 @@ ObjectFile assemble(const std::string& source, const std::string&) {
                 if (dir.text == "byte") {
                     AsmToken val = next_tok();
                     if (val.type == AsmToken::NUMBER) {
-                        u8 v = static_cast<u8>(val.intval & 0xFF);
-                        if (current_pass == 1) current_data.push_back(v);
+                        if (current_pass == 1) {
+                            u8 v = static_cast<u8>(val.intval & 0xFF);
+                            current_data.push_back(v);
+                        } else {
+                            current_data.push_back(0);
+                        }
                     }
                     while (tok.type != AsmToken::NEWLINE && tok.type != AsmToken::END) tok = next_tok();
                     tok = next_tok();
@@ -220,10 +233,13 @@ ObjectFile assemble(const std::string& source, const std::string&) {
                 if (dir.text == "word" || dir.text == "short") {
                     AsmToken val = next_tok();
                     if (val.type == AsmToken::NUMBER) {
-                        u16 v = static_cast<u16>(val.intval & 0xFFFF);
                         if (current_pass == 1) {
+                            u16 v = static_cast<u16>(val.intval & 0xFFFF);
                             current_data.push_back(v & 0xFF);
                             current_data.push_back((v >> 8) & 0xFF);
+                        } else {
+                            current_data.push_back(0);
+                            current_data.push_back(0);
                         }
                     }
                     while (tok.type != AsmToken::NEWLINE && tok.type != AsmToken::END) tok = next_tok();
@@ -234,10 +250,13 @@ ObjectFile assemble(const std::string& source, const std::string&) {
                 if (dir.text == "quad" || dir.text == "dword") {
                     AsmToken val = next_tok();
                     if (val.type == AsmToken::NUMBER) {
-                        u64 v = static_cast<u64>(val.intval);
                         if (current_pass == 1) {
+                            u64 v = static_cast<u64>(val.intval);
                             for (int i = 0; i < 8; i++)
                                 current_data.push_back((v >> (i*8)) & 0xFF);
+                        } else {
+                            for (int i = 0; i < 8; i++)
+                                current_data.push_back(0);
                         }
                     }
                     while (tok.type != AsmToken::NEWLINE && tok.type != AsmToken::END) tok = next_tok();
@@ -247,8 +266,12 @@ ObjectFile assemble(const std::string& source, const std::string&) {
 
                 if (dir.text == "ascii") {
                     AsmToken str = next_tok();
-                    if (str.type == AsmToken::STRING && current_pass == 1) {
-                        current_data.insert(current_data.end(), str.text.begin(), str.text.end());
+                    if (str.type == AsmToken::STRING) {
+                        if (current_pass == 1) {
+                            current_data.insert(current_data.end(), str.text.begin(), str.text.end());
+                        } else {
+                            current_data.insert(current_data.end(), str.text.size(), 0);
+                        }
                     }
                     while (tok.type != AsmToken::NEWLINE && tok.type != AsmToken::END) tok = next_tok();
                     tok = next_tok();
@@ -257,9 +280,13 @@ ObjectFile assemble(const std::string& source, const std::string&) {
 
                 if (dir.text == "asciz" || dir.text == "string") {
                     AsmToken str = next_tok();
-                    if (str.type == AsmToken::STRING && current_pass == 1) {
-                        current_data.insert(current_data.end(), str.text.begin(), str.text.end());
-                        current_data.push_back(0);
+                    if (str.type == AsmToken::STRING) {
+                        if (current_pass == 1) {
+                            current_data.insert(current_data.end(), str.text.begin(), str.text.end());
+                            current_data.push_back(0);
+                        } else {
+                            current_data.insert(current_data.end(), str.text.size() + 1, 0);
+                        }
                     }
                     while (tok.type != AsmToken::NEWLINE && tok.type != AsmToken::END) tok = next_tok();
                     tok = next_tok();
@@ -271,7 +298,7 @@ ObjectFile assemble(const std::string& source, const std::string&) {
                     if (val_t.type == AsmToken::NUMBER) {
                         u64 align = static_cast<u64>(val_t.intval);
                         u64 mis = current_data.size() % align;
-                        if (mis && current_pass == 1) {
+                        if (mis) {
                             current_data.insert(current_data.end(), align - mis, 0);
                         }
                     }
@@ -369,7 +396,13 @@ ObjectFile assemble(const std::string& source, const std::string&) {
                         } else {
                             auto it = labels.find(ot.text);
                             if (it != labels.end()) {
-                                imm_val = static_cast<i64>(it->second);
+                                i64 label_off = static_cast<i64>(it->second);
+                                bool is_branch = (entry->format == InstFormat::B || entry->format == InstFormat::J);
+                                if (current_pass == 1 && is_branch) {
+                                    imm_val = label_off - static_cast<i64>(current_data.size());
+                                } else {
+                                    imm_val = label_off;
+                                }
                             }
                             has_imm = true;
                         }
@@ -390,9 +423,7 @@ ObjectFile assemble(const std::string& source, const std::string&) {
                 inst.operands = ops;
 
                 EncodedInst res = encode_instruction(inst);
-                if (current_pass == 1) {
-                    current_data.insert(current_data.end(), res.bytes.begin(), res.bytes.end());
-                }
+                current_data.insert(current_data.end(), res.bytes.begin(), res.bytes.end());
                 tok = next_tok();
                 continue;
             }

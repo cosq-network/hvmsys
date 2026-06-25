@@ -96,6 +96,18 @@ inline u64 elf_r_info(u32 sym, u32 type) {
     return (static_cast<u64>(sym) << 32) | type;
 }
 
+// Program header types
+constexpr u32 PT_NULL   = 0;
+constexpr u32 PT_LOAD   = 1;
+
+// Program header flags
+constexpr u32 PF_X = 1;
+constexpr u32 PF_W = 2;
+constexpr u32 PF_R = 4;
+
+// Default base virtual address for executables
+constexpr u64 HVM_BASE_ADDR = 0x100000;
+
 // Write an ELF64-HVM object file or executable
 std::vector<u8> write_elf(const ObjectFile& obj);
 
